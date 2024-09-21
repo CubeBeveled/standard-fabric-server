@@ -11,6 +11,8 @@ const versions = [
   "1.20"
 ]
 
+axios.defaults.headers.common["User-Agent"] = "CubeBeveled/standard-fabric-server";
+
 axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
   .then(async res => {
     for (const c of res.data) {
