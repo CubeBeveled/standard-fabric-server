@@ -67,15 +67,35 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
           }
         }
 
-        console.log("Making zip files")
+        console.log("Making zip files");
         filePaths.forEach(async (val, key) => {
           const zip = new JSZip();
 
-          console.log(key)
+          // Debugging
+          // console.log(key)
           val.forEach(modPath => {
             const modZipPath = `mods/${path.basename(modPath)}`;
 
-            console.log(" ", modZipPath);
+            // Debugging
+            // console.log(" ", modZipPath);
+            zip.file(modZipPath, fs.readFileSync(path.join(__dirname, modPath)))
+          });
+
+          const zipContent = await zip.generateAsync({ type: "nodebuffer" });
+          fs.writeFileSync(`${key}/sfs-${key}.zip`, zipContent);
+        });
+
+        console.log("Making mrpack files");
+        filePaths.forEach(async (val, key) => {
+          const zip = new JSZip();
+
+          // Debugging
+          // console.log(key)
+          val.forEach(modPath => {
+            const modZipPath = `mods/${path.basename(modPath)}`;
+
+            // Debugging
+            // console.log(" ", modZipPath);
             zip.file(modZipPath, fs.readFileSync(path.join(__dirname, modPath)))
           });
 
