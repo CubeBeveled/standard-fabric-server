@@ -38,7 +38,7 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
                   }
                 });
 
-                fs.writeFileSync(pv + file.filename, jar.data);
+                fs.writeFileSync(pv + "/" +file.filename, jar.data);
                 break;
               }
               
