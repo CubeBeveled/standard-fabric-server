@@ -46,6 +46,8 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
             }
           }
         }
+
+        console.log("Done")
       }
     }
   })
