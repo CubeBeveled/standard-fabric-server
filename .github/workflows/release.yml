@@ -33,7 +33,10 @@ jobs:
           zip -r release/sfs.zip . \
               -x ".git/*" \
               -x ".github/*" \
+              -x "scripts/*" \
+              -x "release/*" \
               -x "README.md" \
+              -x ".gitignore" \
 
       - name: Release under current tag
         uses: "0xDylan/action-auto-releases-n20@v1.1"
