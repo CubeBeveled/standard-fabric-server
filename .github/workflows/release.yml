@@ -1,0 +1,45 @@
+name: Release tagged version
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: "latest"
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set release version
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+      - name: Prepare release folder
+        run: |
+          mkdir -p release
+
+      - name: Create release zip
+        run: |
+          zip -r release/server-sided.zip . \
+              -x ".git/*" \
+              -x ".github/*" \
+              -x "README.md" \
+
+      - name: Release under current tag
+        uses: "0xDylan/action-auto-releases-n20@v1.1"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: false
+          title: "Latest Mods"
+          files: release/*
