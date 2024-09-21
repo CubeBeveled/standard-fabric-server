@@ -30,7 +30,7 @@ jobs:
 
       - name: Create release zip
         run: |
-          zip -r release/server-sided.zip . \
+          zip -r release/sfs.zip . \
               -x ".git/*" \
               -x ".github/*" \
               -x "README.md" \
