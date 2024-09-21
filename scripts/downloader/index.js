@@ -1,6 +1,7 @@
 const axios = require("axios");
 const path = require("path");
-const fs = require("fs");
+const JSZip = require("jszip")
+const fs = require("fs-extra");
 
 const versions = [
   "1.21.1",
@@ -13,7 +14,8 @@ const versions = [
 ]
 
 axios.defaults.headers.common["User-Agent"] = "CubeBeveled/standard-fabric-server";
-let notFound = []
+let notFound = [];
+let filePaths = new Map();
 
 axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
   .then(async res => {
@@ -43,6 +45,11 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
                 });
 
                 const jarFilePath = `${pv}/mods/${file.filename}`
+
+                if (filePaths.has(pv)) {
+                  filePaths.get(pv).push(jarFilePath)
+                } else filePaths.set(pv, [jarFilePath])
+
                 if (fs.existsSync(jarFilePath)) fs.writeFileSync(jarFilePath, jar.data)
                 else {
                   fs.mkdirSync(path.dirname(jarFilePath), { recursive: true })
@@ -60,7 +67,23 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
           }
         }
 
-        console.log("Done")
+        console.log("Making zip files")
+        filePaths.forEach(async (val, key) => {
+          const zip = new JSZip();
+
+          console.log(key)
+          val.forEach(modPath => {
+            const modZipPath = `mods/${path.basename(modPath)}`;
+
+            console.log(" ", modZipPath);
+            zip.file(modZipPath, fs.readFileSync(path.join(__dirname, modPath)))
+          });
+
+          const zipContent = await zip.generateAsync({ type: "nodebuffer" });
+          fs.writeFileSync(`${key}/sfs-${key}.zip`, zipContent);
+        });
+
+        console.log("\nDone")
         console.log("Skipped\n" + notFound.join("\n  "))
       }
     }
