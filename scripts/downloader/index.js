@@ -13,6 +13,7 @@ const versions = [
 ]
 
 axios.defaults.headers.common["User-Agent"] = "CubeBeveled/standard-fabric-server";
+let notFound = []
 
 axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
   .then(async res => {
@@ -27,6 +28,8 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
 
           for (const pv of versions) {
             console.log("Checking for version", pv)
+            let found = false;
+
             for (const mv of modVersions.data) {
               if (mv.game_versions.includes(pv) && mv.loaders.includes("fabric")) {
                 const file = mv.files[0];
@@ -46,15 +49,19 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
                   fs.writeFileSync(jarFilePath, jar.data)
                 };
 
+                found = true;
                 break;
               }
 
               console.log()
             }
+
+            if (!found) notFound.push(`${name} for ${pv}`)
           }
         }
 
         console.log("Done")
+        console.log("Skipped\n" + notFound.join("\n  "))
       }
     }
   })
