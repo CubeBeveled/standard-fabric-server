@@ -42,7 +42,7 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
                   }
                 });
 
-                const jarFilePath = pv + "/" + file.filename
+                const jarFilePath = `${pv}/mods/${file.filename}`
                 if (fs.existsSync(jarFilePath)) fs.writeFileSync(jarFilePath, jar.data)
                 else {
                   fs.mkdirSync(path.dirname(jarFilePath), { recursive: true })
