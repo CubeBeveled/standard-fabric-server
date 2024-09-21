@@ -3,6 +3,7 @@ const path = require("path");
 const JSZip = require("jszip")
 const fs = require("fs-extra");
 
+const fabricLoaderVersion = "0.16.5";
 const versions = [
   "1.21.1",
   "1.21",
@@ -38,17 +39,23 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
                 console.log("Downloading", file.filename)
 
                 const jar = await axios.get(file.url, {
-                  responseType: "arraybuffer",  // Receive the file as binary data
+                  responseType: "arraybuffer",
                   headers: {
                     "Content-Type": "application/java-archive"
                   }
                 });
 
                 const jarFilePath = `${pv}/mods/${file.filename}`
+                const modObj = {
+                  path: jarFilePath,
+                  hashes: file.hashes,
+                  downloadUrl: file.url,
+                  fileSize: file.size
+                }
 
                 if (filePaths.has(pv)) {
-                  filePaths.get(pv).push(jarFilePath)
-                } else filePaths.set(pv, [jarFilePath])
+                  filePaths.get(pv).push(modObj)
+                } else filePaths.set(pv, [modObj])
 
                 if (fs.existsSync(jarFilePath)) fs.writeFileSync(jarFilePath, jar.data)
                 else {
@@ -59,10 +66,9 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
                 found = true;
                 break;
               }
-
-              console.log()
             }
 
+            console.log()
             if (!found) notFound.push(`${name} for ${pv}`)
           }
         }
@@ -73,12 +79,12 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
 
           // Debugging
           // console.log(key)
-          val.forEach(modPath => {
-            const modZipPath = `mods/${path.basename(modPath)}`;
+          val.forEach(mod => {
+            const modZipPath = `mods/${path.basename(mod.path)}`;
 
             // Debugging
             // console.log(" ", modZipPath);
-            zip.file(modZipPath, fs.readFileSync(path.join(__dirname, modPath)))
+            zip.file(modZipPath, fs.readFileSync(path.join(__dirname, mod.path)))
           });
 
           const zipContent = await zip.generateAsync({ type: "nodebuffer" });
@@ -89,18 +95,39 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
         filePaths.forEach(async (val, key) => {
           const zip = new JSZip();
 
+          let modrinthIndex = {
+            formatVersion: 1,
+            game: "minecraft",
+            versionId: "0.0.1",
+            name: "SFS " + key,
+            summary: "The standard mods every fabric server needs",
+            files: [],
+            dependencies: {
+              minecraft: key,
+              "fabric-loader": fabricLoaderVersion
+            }
+          };
+
+          // Add the `modrinth.index.json` file to the zip
+          zip.file("modrinth.index.json", JSON.stringify(modrinthIndex, null, 2));
+
           // Debugging
           // console.log(key)
-          val.forEach(modPath => {
-            const modZipPath = `mods/${path.basename(modPath)}`;
-
-            // Debugging
-            // console.log(" ", modZipPath);
-            zip.file(modZipPath, fs.readFileSync(path.join(__dirname, modPath)))
+          val.forEach(mod => {
+            modrinthIndex.files.push({
+              path: `mods/${path.basename(mod.path)}`,
+              hashes: mod.hashes,
+              env: {
+                client: "optional",
+                server: "required",
+              },
+              downloads: [mod.downloadUrl],
+              fileSize: mod.fileSize
+            });
           });
-
+          
           const zipContent = await zip.generateAsync({ type: "nodebuffer" });
-          fs.writeFileSync(`${key}/sfs-${key}.zip`, zipContent);
+          fs.writeFileSync(`${key}/sfs-${key}.mrpack`, zipContent);
         });
 
         console.log("\nDone")
