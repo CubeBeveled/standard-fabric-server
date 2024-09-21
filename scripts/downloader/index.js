@@ -1,5 +1,6 @@
 const axios = require("axios");
-const fs = require("fs")
+const path = require("path");
+const fs = require("fs");
 
 const versions = [
   "1.21.1",
@@ -38,10 +39,16 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
                   }
                 });
 
-                fs.writeFileSync(pv + "/" +file.filename, jar.data);
+                const jarFilePath = pv + "/" + file.filename
+                if (fs.existsSync(jarFilePath)) fs.writeFileSync(jarFilePath, jar.data)
+                else {
+                  fs.mkdirSync(path.dirname(jarFilePath), { recursive: true })
+                  fs.writeFileSync(jarFilePath, jar.data)
+                };
+
                 break;
               }
-              
+
               console.log()
             }
           }
