@@ -107,10 +107,7 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
               "fabric-loader": fabricLoaderVersion
             }
           };
-
-          // Add the `modrinth.index.json` file to the zip
-          zip.file("modrinth.index.json", JSON.stringify(modrinthIndex, null, 2));
-
+          
           // Debugging
           // console.log(key)
           val.forEach(mod => {
@@ -125,7 +122,8 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
               fileSize: mod.fileSize
             });
           });
-          
+
+          zip.file("modrinth.index.json", JSON.stringify(modrinthIndex, null, 2));
           const zipContent = await zip.generateAsync({ type: "nodebuffer" });
           fs.writeFileSync(`${key}/sfs-${key}.mrpack`, zipContent);
         });
