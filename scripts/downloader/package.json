@@ -1,0 +1,25 @@
+{
+  "name": "sfs-automation",
+  "version": "0.0.1",
+  "description": "Packages for the scripts that help me build this modpack",
+  "main": "index.js",
+  "scripts": {
+    "test": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CubeBeveled/standard-fabric-server.git"
+  },
+  "keywords": [
+    "modpack"
+  ],
+  "author": "Beveled Cube",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/CubeBeveled/standard-fabric-server/issues"
+  },
+  "homepage": "https://github.com/CubeBeveled/standard-fabric-server#readme",
+  "dependencies": {
+    "axios": "^1.7.7"
+  }
+}
