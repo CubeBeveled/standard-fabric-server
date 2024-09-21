@@ -35,6 +35,7 @@ jobs:
               -x ".github/*" \
               -x "scripts/*" \
               -x "release/*" \
+              -x "*.zip" \
               -x "README.md" \
               -x ".gitignore" \
 
