@@ -91,7 +91,7 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
           fs.writeFileSync(`${key}/sfs-${key}.zip`, zipContent);
         });
 
-        console.log("Making mrpack files");
+        /*console.log("Making mrpack files");
         filePaths.forEach(async (val, key) => {
           const zip = new JSZip();
 
@@ -126,7 +126,7 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
           zip.file("modrinth.index.json", JSON.stringify(modrinthIndex, null, 2));
           const zipContent = await zip.generateAsync({ type: "nodebuffer" });
           fs.writeFileSync(`${key}/sfs-${key}.mrpack`, zipContent);
-        });
+        });*/
 
         console.log("\nDone")
         console.log("Skipped\n" + notFound.join("\n  "))
