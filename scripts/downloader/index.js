@@ -100,7 +100,7 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
           let modrinthIndex = {
             formatVersion: 1,
             game: "minecraft",
-            versionId: "0.0.2",
+            versionId: "0.0.3",
             name: "SFS " + key,
             summary: "The standard mods every fabric server needs",
             files: [],
