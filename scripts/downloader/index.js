@@ -5,6 +5,8 @@ const fs = require("fs-extra");
 
 const fabricLoaderVersion = "0.16.5";
 const versions = [
+  "1.21.3",
+  "1.21.2",
   "1.21.1",
   "1.21",
   "1.20.4",
@@ -12,7 +14,7 @@ const versions = [
   "1.20.2",
   "1.20.1",
   "1.20"
-]
+];
 
 axios.defaults.headers.common["User-Agent"] = "CubeBeveled/standard-fabric-server";
 let notFound = [];
