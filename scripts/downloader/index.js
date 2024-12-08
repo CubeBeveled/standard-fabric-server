@@ -1,10 +1,11 @@
 const axios = require("axios");
-const path = require("path");
-const JSZip = require("jszip")
+const JSZip = require("jszip");
 const fs = require("fs-extra");
+const path = require("path");
 
-const fabricLoaderVersion = "0.16.5";
+const fabricLoaderVersion = "0.16.9";
 const versions = [
+  "1.21.4",
   "1.21.3",
   "1.21.2",
   "1.21.1",
