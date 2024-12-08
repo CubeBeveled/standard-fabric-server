@@ -3,6 +3,7 @@ const JSZip = require("jszip");
 const fs = require("fs-extra");
 const path = require("path");
 
+const modrinthVersion = "0.0.4";
 const fabricLoaderVersion = "0.16.9";
 const versions = [
   "1.21.4",
@@ -101,7 +102,7 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
           let modrinthIndex = {
             formatVersion: 1,
             game: "minecraft",
-            versionId: "0.0.3",
+            versionId: modrinthVersion,
             name: "SFS " + key,
             summary: "The standard mods every fabric server needs",
             files: [],
