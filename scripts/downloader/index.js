@@ -3,6 +3,7 @@ const JSZip = require("jszip");
 const fs = require("fs-extra");
 const path = require("path");
 
+const downloadPath = "../../"
 const modrinthVersion = "0.0.4";
 const fabricLoaderVersion = "0.16.9";
 const versions = [
@@ -21,6 +22,10 @@ const versions = [
 axios.defaults.headers.common["User-Agent"] = "CubeBeveled/standard-fabric-server";
 let notFound = [];
 let filePaths = new Map();
+
+for (const v of versions) {
+  if (fs.existsSync(`../../${v}`)) fs.rmSync(`../../${v}`, { recursive: true });
+}
 
 axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
   .then(async res => {
@@ -49,7 +54,7 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
                   }
                 });
 
-                const jarFilePath = `${pv}/mods/${file.filename}`
+                const jarFilePath = `${downloadPath}${pv}/mods/${file.filename}`
                 const modObj = {
                   path: jarFilePath,
                   hashes: file.hashes,
@@ -92,7 +97,7 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
           });
 
           const zipContent = await zip.generateAsync({ type: "nodebuffer" });
-          fs.writeFileSync(`${key}/sfs-${key}.zip`, zipContent);
+          fs.writeFileSync(`${downloadPath}${key}/sfs-${key}.zip`, zipContent);
         });
 
         console.log("Making mrpack files");
@@ -111,7 +116,7 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
               "fabric-loader": fabricLoaderVersion
             }
           };
-          
+
           // Debugging
           // console.log(key)
           val.forEach(mod => {
@@ -129,7 +134,7 @@ axios.get("https://api.modrinth.com/v3/user/w6wREnpz/collections")
 
           zip.file("modrinth.index.json", JSON.stringify(modrinthIndex, null, 2));
           const zipContent = await zip.generateAsync({ type: "nodebuffer" });
-          fs.writeFileSync(`${key}/sfs-${key}.mrpack`, zipContent);
+          fs.writeFileSync(`${downloadPath}${key}/sfs-${key}.mrpack`, zipContent);
         });
 
         console.log("\nDone")
