@@ -4,7 +4,7 @@ const fs = require("fs-extra");
 const path = require("path");
 
 const downloadPath = "../../"
-const modrinthVersion = "0.0.4";
+const modrinthVersion = "0.0.5";
 const fabricLoaderVersion = "0.16.9";
 const versions = [
   "1.21.4",
