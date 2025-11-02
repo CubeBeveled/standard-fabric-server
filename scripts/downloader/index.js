@@ -19,7 +19,7 @@ const versions = [
   "1.20"
 ];
 
-axios.defaults.headers.common["User-Agent"] = "CubeBeveled/standard-fabric-server";
+axios.defaults.headers.common["User-Agent"] = "github.com/CubeBeveled/standard-fabric-server";
 let notFound = [];
 let filePaths = new Map();
 
