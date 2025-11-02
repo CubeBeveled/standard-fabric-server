@@ -3,10 +3,17 @@ const JSZip = require("jszip");
 const fs = require("fs-extra");
 const path = require("path");
 
-const downloadPath = "../../"
-const modrinthVersion = "0.0.5";
-const fabricLoaderVersion = "0.16.9";
+const downloadPath = "../../";
+const modrinthVersion = "0.1.6";
+const fabricLoaderVersion = "0.17.3";
+const collectionID = "jIKTSUDZ"
 const versions = [
+  "1.21.10",
+  "1.21.9",
+  "1.21.8",
+  "1.21.7",
+  "1.21.6",
+  "1.21.5",
   "1.21.4",
   "1.21.3",
   "1.21.2",
