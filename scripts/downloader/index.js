@@ -1,30 +1,14 @@
+const metadata = require("../metadata.json");
 const axios = require("axios");
 const JSZip = require("jszip");
 const fs = require("fs-extra");
 const path = require("path");
 
 const downloadPath = "../../";
-const modrinthVersion = "0.1.6";
-const fabricLoaderVersion = "0.17.3";
-const collectionID = "jIKTSUDZ";
-const versions = [
-  "1.21.10",
-  "1.21.9",
-  "1.21.8",
-  "1.21.7",
-  "1.21.6",
-  "1.21.5",
-  "1.21.4",
-  "1.21.3",
-  "1.21.2",
-  "1.21.1",
-  "1.21",
-  "1.20.4",
-  "1.20.3",
-  "1.20.2",
-  "1.20.1",
-  "1.20",
-];
+const projectVersion = metadata.version;
+const fabricLoaderVersion = metadata.fabricVersion;
+const collectionID = metadata.collectionID;
+const versions = metadata.versions;
 
 axios.defaults.headers.common["User-Agent"] =
   "github.com/CubeBeveled/standard-fabric-server";
@@ -129,9 +113,9 @@ async function main() {
         let modrinthIndex = {
           formatVersion: 1,
           game: "minecraft",
-          versionId: modrinthVersion,
-          name: "SFS " + key,
-          summary: "The standard mods every fabric server needs",
+          versionId: projectVersion,
+          name: `SFS ${projectVersion} for ${key}`,
+          summary: "The basic mods every fabric server needs",
           files: [],
           dependencies: {
             minecraft: key,
@@ -139,8 +123,6 @@ async function main() {
           },
         };
 
-        // Debugging
-        // console.log(key)
         val.forEach((mod) => {
           modrinthIndex.files.push({
             path: `mods/${path.basename(mod.path)}`,
@@ -156,7 +138,10 @@ async function main() {
 
         zip.file("modrinth.index.json", JSON.stringify(modrinthIndex, null, 2));
         const zipContent = await zip.generateAsync({ type: "nodebuffer" });
-        fs.writeFileSync(`${downloadPath}${key}/sfs-${key}.mrpack`, zipContent);
+        fs.writeFileSync(
+          path.join(downloadPath, `${key}/sfs-${key}.mrpack`),
+          zipContent
+        );
       });
 
       console.log("\nDone");

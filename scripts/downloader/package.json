@@ -1,5 +1,5 @@
 {
-  "name": "sfs-automation",
+  "name": "sfs-downloader",
   "version": "0.0.1",
   "description": "Packages for the scripts that help me build this modpack",
   "main": "index.js",
