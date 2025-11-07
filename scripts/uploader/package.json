@@ -1,0 +1,17 @@
+{
+  "name": "sfs-uploader",
+  "version": "0.0.1",
+  "description": "",
+  "license": "ISC",
+  "author": "Beveled Cube",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "node index.js"
+  },
+  "dependencies": {
+    "axios": "^1.13.2",
+    "dotenv": "^17.2.3",
+    "form-data": "^4.0.4"
+  }
+}
