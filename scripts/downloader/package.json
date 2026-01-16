@@ -1,7 +1,7 @@
 {
   "name": "sfs-downloader",
   "version": "0.0.1",
-  "description": "Packages for the scripts that help me build this modpack",
+  "description": "Downloads the mods from the collection",
   "main": "index.js",
   "scripts": {
     "test": "node index.js"
