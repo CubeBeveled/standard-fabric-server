@@ -1,22 +1,35 @@
+// @ts-check
 const metadata = require("../metadata.json");
 const axios = require("axios");
 const JSZip = require("jszip");
 const fs = require("fs-extra");
 const path = require("path");
 
+const Mod = require("./classes/mod.js");
+const ModrinthIndex = require("./classes/modrinthIndex.js");
+const ModrinthFile = require("./classes/modrinthFile.js");
+
 const downloadPath = "../../";
 const projectVersion = metadata.version;
 const fabricLoaderVersion = metadata.fabricVersion;
-const versions = metadata.versions;
+const mcVersions = metadata.versions;
 
 axios.defaults.headers.common["User-Agent"] =
   "github.com/CubeBeveled/standard-fabric-server";
+
+/**
+ * @type {string[]}
+ */
 let notFound = [];
+
+/**
+ * @type {Map<string, Mod[]>}
+ */
 const filePaths = new Map();
 
 main();
 async function main() {
-  for (const version of versions) {
+  for (const version of mcVersions) {
     if (fs.existsSync(`../../${version}`))
       fs.rmSync(`../../${version}`, { recursive: true });
   }
@@ -25,58 +38,59 @@ async function main() {
   if (collection) console.log("Found collection");
   else process.exit(1);
 
+  // Iterate over each mod in the collection
   for (const project of collection.projects) {
     const name = (await getProjectMetadata(project)).name;
 
     console.log("Getting versions of", name);
 
-    for (const version of versions) {
+    for (const version of mcVersions) {
       console.log(`Checking ${name} for version ${version}`);
       let found = false;
 
+      // Check if the mod is available for each needed version
       for (const modVersion of await getProjectVersions(project)) {
         if (
-          modVersion.game_versions.includes(version) &&
-          modVersion.loaders.includes("fabric")
-        ) {
-          const file = modVersion.files.find((f) =>
+          !modVersion.game_versions.includes(version) ||
+          !modVersion.loaders.includes("fabric")
+        )
+          continue;
+
+        const file = modVersion.files.find(
+          (/** @type {{ filename: string; }} */ f) =>
             f.filename.endsWith(".jar"),
-          );
-          console.log("Downloading", file.filename);
+        );
+        if (!file) continue;
 
-          const jar = await axios.get(file.url, {
-            responseType: "arraybuffer",
-            headers: {
-              "Content-Type": "application/java-archive",
-            },
-          });
+        console.log("Downloading", file.filename);
 
-          const jarFilePath = path.join(
-            downloadPath,
-            `${version}/mods/${file.filename}`,
-          );
+        const jar = await axios.get(file.url, {
+          responseType: "arraybuffer",
+          headers: {
+            "Content-Type": "application/java-archive",
+          },
+        });
 
-          const modObj = {
-            path: jarFilePath,
-            hashes: file.hashes,
-            downloadUrl: file.url,
-            fileSize: file.size,
-          };
+        const jarFilePath = path.join(
+          downloadPath,
+          `${version}/mods/${file.filename}`,
+        );
 
-          if (filePaths.has(version)) {
-            filePaths.get(version).push(modObj);
-          } else filePaths.set(version, [modObj]);
+        const modObj = new Mod(jarFilePath, file.hashes, file.url, file.size);
 
-          if (fs.existsSync(jarFilePath))
-            fs.writeFileSync(jarFilePath, jar.data);
-          else {
-            fs.mkdirSync(path.dirname(jarFilePath), { recursive: true });
-            fs.writeFileSync(jarFilePath, jar.data);
-          }
+        const modList = filePaths.get(version);
+        if (modList) {
+          modList.push(modObj);
+        } else filePaths.set(version, [modObj]);
 
-          found = true;
-          break;
+        if (fs.existsSync(jarFilePath)) fs.writeFileSync(jarFilePath, jar.data);
+        else {
+          fs.mkdirSync(path.dirname(jarFilePath), { recursive: true });
+          fs.writeFileSync(jarFilePath, jar.data);
         }
+
+        found = true;
+        break;
       }
 
       console.log();
@@ -104,33 +118,36 @@ async function main() {
   filePaths.forEach(async (mods, mcVer) => {
     const zip = new JSZip();
 
-    let modrinthIndex = {
-      formatVersion: 1,
+    let modrinthIndex = new ModrinthIndex({
       game: "minecraft",
       versionId: projectVersion,
       name: `SFS ${projectVersion} for ${mcVer}`,
       summary: "The basic mods every fabric server needs",
-      files: [],
       dependencies: {
         minecraft: mcVer,
         "fabric-loader": fabricLoaderVersion,
       },
-    };
-
-    mods.forEach((mod) => {
-      modrinthIndex.files.push({
-        path: `mods/${path.basename(mod.path)}`,
-        hashes: mod.hashes,
-        env: {
-          client: "optional",
-          server: "required",
-        },
-        downloads: [mod.downloadUrl],
-        fileSize: mod.fileSize,
-      });
     });
 
-    zip.file("modrinth.index.json", JSON.stringify(modrinthIndex, null, 2));
+    mods.forEach((mod) => {
+      modrinthIndex.addFile(
+        new ModrinthFile({
+          path: `mods/${path.basename(mod.path)}`,
+          hashes: mod.hashes,
+          env: {
+            client: "optional",
+            server: "required",
+          },
+          downloads: [mod.downloadUrl],
+          fileSize: mod.fileSize,
+        }),
+      );
+    });
+
+    zip.file(
+      "modrinth.index.json",
+      JSON.stringify(modrinthIndex.toJSON(), null, 2),
+    );
     const zipContent = await zip.generateAsync({ type: "nodebuffer" });
     fs.writeFileSync(
       path.join(downloadPath, `${mcVer}/sfs-${mcVer}.mrpack`),
@@ -142,6 +159,10 @@ async function main() {
   console.log("Skipped\n" + notFound.join("\n  "));
 }
 
+/**
+ * @param {string} userId
+ * @param {string} id
+ */
 async function findCollection(userId, id) {
   const collections = (
     await axios.get(`https://api.modrinth.com/v3/user/${userId}/collections`)
@@ -156,11 +177,17 @@ async function findCollection(userId, id) {
   return undefined;
 }
 
+/**
+ * @param {any} projectId
+ */
 async function getProjectMetadata(projectId) {
   return (await axios.get(`https://api.modrinth.com/v3/project/${projectId}`))
     .data;
 }
 
+/**
+ * @param {any} projectId
+ */
 async function getProjectVersions(projectId) {
   return (
     await axios.get(`https://api.modrinth.com/v3/project/${projectId}/version`)
