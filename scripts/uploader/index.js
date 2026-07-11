@@ -1,20 +1,34 @@
 const FormData = require("form-data");
-const metadata = require("../metadata.json");
+const { Command } = require("commander");
 const axios = require("axios");
 const path = require("path");
 const fs = require("fs");
-require("dotenv").config();
+
+const metadata = require("../metadata.json");
+const package = require("./package.json");
+
+const program = new Command();
+
+program
+  .name("sfs-uploader")
+  .description("Uploads standard fabric server versions to modrinth")
+  .version(package.version)
+  .argument("<pat-token>");
+
+program.parse();
 
 const changelog = "";
 const downloadPath = "../../";
-const token = process.env.TOKEN;
+const token = program.args[0];
 const projectID = metadata.projectID;
 
 main();
 async function main() {
   for (const version of fs.readdirSync(downloadPath, { withFileTypes: true })) {
     if (version.isDirectory()) {
-      if (!version.name.startsWith("1.")) continue;
+      const versionRegex = /[0-9]{1,2}\.[0-9]{1,2}(\.[0-9]{1,2})?/;
+      if (!versionRegex.test(version.name)) continue;
+
       let zipPath;
       let mrpackPath;
 
@@ -33,7 +47,7 @@ async function main() {
         console.log(
           `Could not find ${"zip" ? !zipPath : "mrpack"} for version ${
             version.name
-          }`
+          }`,
         );
         continue;
       }
@@ -67,13 +81,13 @@ async function main() {
               ...form.getHeaders(),
             },
             maxBodyLength: Infinity,
-          }
+          },
         );
 
         console.log(
           `✅ Uploaded v${versionData.version_number} for ${
             version.name
-          } (${JSON.stringify(versionData.game_versions)})`
+          } (${JSON.stringify(versionData.game_versions)})`,
         );
       } catch (err) {
         console.error(`Upload for ${version.name} failed`);
@@ -88,5 +102,5 @@ async function main() {
     }
   }
 
-  console.log("Done")
+  console.log("Done");
 }
