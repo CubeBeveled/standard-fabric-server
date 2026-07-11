@@ -31,7 +31,7 @@ async function main() {
     console.log("Getting versions of", name);
 
     for (const version of versions) {
-      console.log("Checking for version", version);
+      console.log(`Checking ${name} for version ${version}`);
       let found = false;
 
       for (const modVersion of await getProjectVersions(project)) {
@@ -40,7 +40,7 @@ async function main() {
           modVersion.loaders.includes("fabric")
         ) {
           const file = modVersion.files.find((f) =>
-            f.filename.endsWith(".jar")
+            f.filename.endsWith(".jar"),
           );
           console.log("Downloading", file.filename);
 
@@ -53,8 +53,9 @@ async function main() {
 
           const jarFilePath = path.join(
             downloadPath,
-            `${version}/mods/${file.filename}`
+            `${version}/mods/${file.filename}`,
           );
+
           const modObj = {
             path: jarFilePath,
             hashes: file.hashes,
@@ -95,28 +96,28 @@ async function main() {
     const zipContent = await zip.generateAsync({ type: "nodebuffer" });
     fs.writeFileSync(
       path.join(downloadPath, version, `sfs-${version}.zip`),
-      zipContent
+      zipContent,
     );
   });
 
   console.log("Making mrpack files");
-  filePaths.forEach(async (val, key) => {
+  filePaths.forEach(async (mods, mcVer) => {
     const zip = new JSZip();
 
     let modrinthIndex = {
       formatVersion: 1,
       game: "minecraft",
       versionId: projectVersion,
-      name: `SFS ${projectVersion} for ${key}`,
+      name: `SFS ${projectVersion} for ${mcVer}`,
       summary: "The basic mods every fabric server needs",
       files: [],
       dependencies: {
-        minecraft: key,
+        minecraft: mcVer,
         "fabric-loader": fabricLoaderVersion,
       },
     };
 
-    val.forEach((mod) => {
+    mods.forEach((mod) => {
       modrinthIndex.files.push({
         path: `mods/${path.basename(mod.path)}`,
         hashes: mod.hashes,
@@ -132,8 +133,8 @@ async function main() {
     zip.file("modrinth.index.json", JSON.stringify(modrinthIndex, null, 2));
     const zipContent = await zip.generateAsync({ type: "nodebuffer" });
     fs.writeFileSync(
-      path.join(downloadPath, `${key}/sfs-${key}.mrpack`),
-      zipContent
+      path.join(downloadPath, `${mcVer}/sfs-${mcVer}.mrpack`),
+      zipContent,
     );
   });
 
@@ -156,12 +157,12 @@ async function findCollection(userId, id) {
 }
 
 async function getProjectMetadata(projectId) {
-  return (await axios.get(`https://api.modrinth.com/v3/project/${project}`))
+  return (await axios.get(`https://api.modrinth.com/v3/project/${projectId}`))
     .data;
 }
 
 async function getProjectVersions(projectId) {
   return (
-    await axios.get(`https://api.modrinth.com/v3/project/${project}/version`)
+    await axios.get(`https://api.modrinth.com/v3/project/${projectId}/version`)
   ).data;
 }
