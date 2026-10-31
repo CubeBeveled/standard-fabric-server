@@ -1,9 +1,10 @@
 {
-  "version": "4",
+  "version": "5",
   "collectionID": "jIKTSUDZ",
   "projectID": "r5ygbOIe",
-  "fabricVersion": "0.19.3",
+  "fabricVersion": "0.20.1",
   "versions": [
+    "26.3",
     "26.2",
     "26.1.2",
     "1.21.11",
