@@ -54,68 +54,74 @@ async function main() {
   // Iterate over each mod in the collection
   for (const project of collection.projects) {
     const name = (await getProjectMetadata(project)).name;
+    const projectVersions = await getProjectVersions(project);
 
     spinner.text = `Getting versions of name`;
     spinner.color = "blue";
 
     for (const version of mcVersions) {
       spinner.text = `Looking for ${name} ${version}`;
-      let found = false;
 
-      // Check if the mod is available for each needed version
-      for (const modVersion of await getProjectVersions(project)) {
-        if (
-          !modVersion.game_versions.includes(version) ||
-          !modVersion.loaders.includes("fabric") ||
-          modVersion.version_type != "release"
-        )
-          continue;
+      const releaseVersion = projectVersions.find(
+        (v) =>
+          v.game_versions.includes(version) &&
+          v.loaders.includes("fabric") &&
+          v.version_type == "release",
+      );
+      const fallbackVersion = projectVersions.find(
+        (v) =>
+          v.game_versions.includes(version) && v.loaders.includes("fabric"),
+      );
+      const finalVersion = releaseVersion ?? fallbackVersion;
 
-        const file = modVersion.files.find(
-          (/** @type {{ filename: string; }} */ f: { filename: string }) =>
-            f.filename.endsWith(".jar"),
-        );
-        if (!file) continue;
-
-        spinner.text = `Downloading ${file.filename}`;
-
-        const jar = await axios.get(file.url, {
-          responseType: "arraybuffer",
-          headers: {
-            "Content-Type": "application/java-archive",
-          },
-        });
-
-        const jarFilePath = path.join(
-          downloadPath,
-          `${version}/mods/${file.filename}`,
-        );
-
-        const modObj: VFWithPackPath = {
-          ...file,
-          filePath: jarFilePath,
-        };
-
-        const modList = filePaths.get(version);
-        if (modList) {
-          modList.push(modObj);
-        } else filePaths.set(version, [modObj]);
-
-        if (fs.existsSync(jarFilePath)) fs.writeFileSync(jarFilePath, jar.data);
-        else {
-          fs.mkdirSync(path.dirname(jarFilePath), { recursive: true });
-          fs.writeFileSync(jarFilePath, jar.data);
-        }
-
-        found = true;
-        break;
-      }
-
-      if (!found) {
+      if (!finalVersion) {
         const str = `${name} for ${version}`;
         notFound.push(str);
         spinner.text = str;
         spinner.color = "yellow";
+        continue;
+      }
+
+      const file = finalVersion.files.find((f) => f.filename.endsWith(".jar"));
+      if (!file) {
+        spinner.text = `File not found for ${finalVersion.name}`;
+        spinner.color = "yellow";
+
+        notFound.push(
+          `JAR for ${finalVersion.name} (https://modrinth.com/mod/iris/version/${finalVersion.id})`,
+        );
+
+        continue;
+      }
+
+      spinner.text = `Downloading ${file.filename}`;
+
+      const jar = await axios.get(file.url, {
+        responseType: "arraybuffer",
+        headers: {
+          "Content-Type": "application/java-archive",
+        },
+      });
+
+      const jarFilePath = path.join(
+        downloadPath,
+        `${version}/mods/${file.filename}`,
+      );
+
+      const modObj: VFWithPackPath = {
+        ...file,
+        filePath: jarFilePath,
+      };
+
+      const modList = filePaths.get(version);
+      if (modList) {
+        modList.push(modObj);
+      } else filePaths.set(version, [modObj]);
+
+      if (fs.existsSync(jarFilePath)) fs.writeFileSync(jarFilePath, jar.data);
+      else {
+        fs.mkdirSync(path.dirname(jarFilePath), { recursive: true });
+        fs.writeFileSync(jarFilePath, jar.data);
       }
     }
   }
