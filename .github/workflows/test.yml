@@ -47,7 +47,9 @@ jobs:
           has_skip_marker() {
             local text="$1"
             [[ "$text" == *"[skip ci]"* ||
+               "$text" == *"[skip-ci]"* ||
                "$text" == *"[ci skip]"* ||
+               "$text" == *"[ci-skip]"* ||
                "$text" == *"[skip tests]"* ||
                "$text" == *"[skip test]"* ]]
           }
