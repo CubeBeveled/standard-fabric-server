@@ -1,0 +1,134 @@
+name: Test modpack launch
+
+# Skip the launch tests by adding [skip ci], [ci skip], or [skip tests]
+# to the commit message. On pull requests you can also add the
+# "skip-tests" label. Manual workflow runs always test.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  discover:
+    name: Discover modpack versions
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.versions.outputs.matrix }}
+      loader: ${{ steps.versions.outputs.loader }}
+      skip: ${{ steps.skip.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/head', github.event.pull_request.number) || github.sha }}
+          fetch-depth: 1
+
+      - name: Check for skip marker
+        id: skip
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          skip=false
+          shopt -s nocasematch
+
+          has_skip_marker() {
+            local text="$1"
+            [[ "$text" == *"[skip ci]"* ||
+               "$text" == *"[ci skip]"* ||
+               "$text" == *"[skip tests]"* ||
+               "$text" == *"[skip test]"* ]]
+          }
+
+          if [[ "$EVENT_NAME" != "workflow_dispatch" ]]; then
+            message="$(git log -1 --pretty=%B)"
+            if has_skip_marker "$message" ||
+               has_skip_marker "$PR_TITLE" ||
+               has_skip_marker "$PR_BODY"; then
+              skip=true
+            fi
+            if [[ ",$PR_LABELS," == *",skip-tests,"* ||
+                  ",$PR_LABELS," == *",skip tests,"* ]]; then
+              skip=true
+            fi
+          fi
+
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+          if [[ "$skip" == "true" ]]; then
+            echo "Skip marker found: modpack launch tests will not run."
+          else
+            echo "No skip marker found: modpack launch tests will run."
+          fi
+
+      - name: Build test matrix
+        id: versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          # c2me requires Java 25 on 1.21.4/1.21.11 and 26.x; 1.21 uses 21; 1.20 uses 17.
+          matrix="$(jq -c '{
+            include: [.versions[] | {
+              version: .,
+              java: (
+                if startswith("26.") then "25"
+                elif . == "1.21.4" or . == "1.21.11" then "25"
+                elif startswith("1.21") then "21"
+                elif startswith("1.20") then "17"
+                else "21"
+                end
+              )
+            }]
+          }' scripts/metadata.json)"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "loader=$(jq -r '.fabricVersion' scripts/metadata.json)" >> "$GITHUB_OUTPUT"
+          echo "Testing: $matrix"
+
+  launch:
+    name: Launch ${{ matrix.version }}
+    needs: discover
+    if: needs.discover.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    env:
+      FABRIC_LOADER: ${{ needs.discover.outputs.loader }}
+      SERVER_DIR: ${{ runner.temp }}/sfs-server
+      SERVER_START_TIMEOUT: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - name: Launch server
+        run: bash scripts/test-launch.sh "${{ matrix.version }}" "$FABRIC_LOADER"
+
+      - name: Upload server logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs-${{ matrix.version }}
+          path: |
+            ${{ runner.temp }}/sfs-server/server.log
+            ${{ runner.temp }}/sfs-server/logs
+            ${{ runner.temp }}/sfs-server/crash-reports
+          if-no-files-found: ignore
+          retention-days: 7
