@@ -1,8 +1,9 @@
 name: Release
 
 # Publishing a tag like `v5` (or `v5.1`) creates a GitHub release and attaches
-# the .mrpack and .zip for every supported Minecraft version. Tags must start
-# with "v" followed by the pack version from scripts/metadata.json.
+# the .mrpack and .zip for every supported Minecraft version. The pack version
+# in scripts/metadata.json is derived from the tag (v5 -> "5") before building,
+# so the tag is the source of truth for the release version.
 #
 # You can also run this manually from the Actions tab and pass an existing tag.
 
@@ -28,6 +29,7 @@ jobs:
   release:
     name: Publish release
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Resolve tag
         id: tag
@@ -56,6 +58,36 @@ jobs:
         with:
           ref: ${{ steps.tag.outputs.tag }}
           fetch-depth: 1
+
+      - name: Set metadata version from tag
+        shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          tmp="$(mktemp)"
+          jq --arg version "$version" '.version = $version' \
+            scripts/metadata.json > "$tmp"
+          mv "$tmp" scripts/metadata.json
+
+          actual="$(jq -r '.version' scripts/metadata.json)"
+          echo "scripts/metadata.json version set to $actual"
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: scripts/downloader/package.json
+
+      - name: Download mods and build packs
+        working-directory: scripts/downloader
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm run build
+          node dist/index.js
 
       - name: Collect pack files
         id: packs
@@ -130,10 +162,6 @@ jobs:
           set -euo pipefail
           title="Standard Fabric Server v${VERSION}"
           mapfile -t files <<< "$FILES"
-
-          if [[ "$TAG" != "v$VERSION" ]]; then
-            echo "::warning::Tag $TAG does not match scripts/metadata.json version (v$VERSION)."
-          fi
 
           if gh release view "$TAG" > /dev/null 2>&1; then
             echo "Release $TAG already exists; updating notes and assets."
