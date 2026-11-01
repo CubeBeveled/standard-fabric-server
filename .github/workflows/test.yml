@@ -107,7 +107,6 @@ jobs:
       matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
     env:
       FABRIC_LOADER: ${{ needs.discover.outputs.loader }}
-      SERVER_DIR: ${{ runner.temp }}/sfs-server
       SERVER_START_TIMEOUT: 300
     steps:
       - uses: actions/checkout@v4
@@ -119,6 +118,8 @@ jobs:
           java-version: ${{ matrix.java }}
 
       - name: Launch server
+        env:
+          SERVER_DIR: ${{ runner.temp }}/sfs-server
         run: bash scripts/test-launch.sh "${{ matrix.version }}" "$FABRIC_LOADER"
 
       - name: Upload server logs
