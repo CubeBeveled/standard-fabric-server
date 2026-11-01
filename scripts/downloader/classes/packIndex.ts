@@ -1,13 +1,29 @@
-// @ts-check
+import ModrinthFile from "./packFile.js";
 
-const ModrinthFile = require("./modrinthFile");
+export default class ModrinthIndex {
+  formatVersion: number;
+  game: string;
+  versionId: string;
+  name: string;
+  summary: string;
+  dependencies: object;
+  files: ModrinthFile[];
 
-class ModrinthIndex {
-  /**
-   *
-   * @param {{game:string, versionId: string, name:string, summary:string, dependencies: object, formatVersion?: number}} param0
-   */
-  constructor({ game, versionId, name, summary, dependencies, formatVersion }) {
+  constructor({
+    game,
+    versionId,
+    name,
+    summary,
+    dependencies,
+    formatVersion,
+  }: {
+    game: string;
+    versionId: string;
+    name: string;
+    summary: string;
+    dependencies: object;
+    formatVersion?: number;
+  }) {
     this.formatVersion = formatVersion ?? 1;
     this.game = game;
     this.versionId = versionId;
@@ -15,16 +31,13 @@ class ModrinthIndex {
     this.summary = summary;
     this.dependencies = dependencies;
 
-    /**
-     * @type {ModrinthFile[]}
-     */
     this.files = [];
   }
 
   /**
    * @param {ModrinthFile} file
    */
-  addFile(file) {
+  addFile(file: ModrinthFile) {
     if (!(file instanceof ModrinthFile))
       throw Error(`Expected ModrinthFile got ${typeof file}`);
 
@@ -43,5 +56,3 @@ class ModrinthIndex {
     };
   }
 }
-
-module.exports = ModrinthIndex;
