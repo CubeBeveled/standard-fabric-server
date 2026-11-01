@@ -2,10 +2,11 @@
   "name": "sfs-downloader",
   "version": "0.0.1",
   "description": "Downloads the mods from the collection",
-  "main": "index.js",
+  "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "test": "node index.js"
+    "build": "tsc",
+    "start": "node dist/index.js"
   },
   "repository": {
     "type": "git",
@@ -27,6 +28,8 @@
     "ora": "^10.0.0"
   },
   "devDependencies": {
-    "@types/fs-extra": "^11.0.4"
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
   }
 }

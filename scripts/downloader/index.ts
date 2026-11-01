@@ -23,7 +23,21 @@ const downloadPath = path.resolve(path.dirname(metadataPath), "..");
 
 const projectVersion = metadata.version;
 const fabricLoaderVersion = metadata.fabricVersion;
-const mcVersions = metadata.versions;
+
+// Optional CLI arguments limit the work to specific Minecraft versions
+// (e.g. `node dist/index.js 1.20 1.21`). CI passes a single version so each
+// test job only downloads the mods it needs.
+const requestedVersions = process.argv.slice(2);
+const unknownVersions = requestedVersions.filter(
+  (version) => !metadata.versions.includes(version),
+);
+if (unknownVersions.length > 0) {
+  console.error(`Unknown Minecraft version(s): ${unknownVersions.join(", ")}`);
+  process.exit(1);
+}
+
+const mcVersions =
+  requestedVersions.length > 0 ? requestedVersions : metadata.versions;
 
 axios.defaults.headers.common["User-Agent"] =
   "github.com/CubeBeveled/standard-fabric-server";
@@ -34,7 +48,11 @@ const spinner = ora("Starting...").start();
 type VFWithPackPath = VersionFile & { filePath: string };
 const filePaths: Map<string, VFWithPackPath[]> = new Map();
 
-main();
+main().catch((err) => {
+  spinner.stop();
+  console.error(err);
+  process.exit(1);
+});
 async function main() {
   for (const version of mcVersions) {
     const versionPath = path.join(downloadPath, version);
@@ -127,7 +145,7 @@ async function main() {
   }
 
   spinner.text = "Making zip files";
-  filePaths.forEach(async (mods, version) => {
+  for (const [version, mods] of filePaths) {
     const zip = new JSZip();
 
     mods.forEach((mod) => {
@@ -140,10 +158,10 @@ async function main() {
       path.join(downloadPath, version, `sfs-${version}.zip`),
       zipContent,
     );
-  });
+  }
 
   spinner.text = "Making mrpack files";
-  filePaths.forEach(async (mods, mcVer) => {
+  for (const [mcVer, mods] of filePaths) {
     const zip = new JSZip();
 
     let mrpackIndex = new ModrinthPackIndex({
@@ -183,9 +201,21 @@ async function main() {
       path.join(downloadPath, `${mcVer}/sfs-${mcVer}.mrpack`),
       zipContent,
     );
-  });
+  }
 
   spinner.stop();
+
+  // A version with no downloadable mods would silently produce no pack and
+  // fail later with a confusing "pack not found" error, so fail here instead.
+  const missingPacks = mcVersions.filter(
+    (version) =>
+      !fs.existsSync(path.join(downloadPath, version, `sfs-${version}.zip`)),
+  );
+  if (missingPacks.length > 0) {
+    console.error(`No pack built for: ${missingPacks.join(", ")}`);
+    process.exitCode = 1;
+  }
+
   console.log("Done");
   console.log("Skipped\n" + notFound.join("\n  "));
 }
