@@ -6,6 +6,8 @@ name: Release
 # so the tag is the source of truth for the release version.
 #
 # You can also run this manually from the Actions tab and pass an existing tag.
+# Manual runs use the code from the branch they are started on; only the
+# version number comes from the tag.
 
 on:
   push:
@@ -53,11 +55,26 @@ jobs:
 
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
-      - name: Check out ${{ steps.tag.outputs.tag }}
+      # Use the commit that contains this workflow, not the tag being
+      # published. On workflow_dispatch this is the branch you ran it from, so
+      # the scripts match the workflow instead of coming from an older tag.
+      - name: Check out source
         uses: actions/checkout@v7
         with:
-          ref: ${{ steps.tag.outputs.tag }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
+
+      - name: Verify tag exists
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if ! gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" > /dev/null 2>&1; then
+            echo "::error::Tag '$TAG' does not exist."
+            exit 1
+          fi
 
       - name: Set metadata version from tag
         shell: bash
