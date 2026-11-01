@@ -1,0 +1,151 @@
+name: Release
+
+# Publishing a tag like `v5` (or `v5.1`) creates a GitHub release and attaches
+# the .mrpack and .zip for every supported Minecraft version. Tags must start
+# with "v" followed by the pack version from scripts/metadata.json.
+#
+# You can also run this manually from the Actions tab and pass an existing tag.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to publish a release for (for example v5)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve tag
+        id: tag
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            tag="$INPUT_TAG"
+          else
+            tag="$REF_NAME"
+          fi
+
+          if [[ ! "$tag" =~ ^v[0-9] ]]; then
+            echo "::error::Tag '$tag' is not a version tag; expected something like v5 or v5.1."
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Check out ${{ steps.tag.outputs.tag }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+          fetch-depth: 1
+
+      - name: Collect pack files
+        id: packs
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(jq -r '.version' scripts/metadata.json)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          mapfile -t files < <(
+            find . -mindepth 2 -maxdepth 2 -type f \
+              \( -name 'sfs-*.mrpack' -o -name 'sfs-*.zip' \) | sort
+          )
+
+          if (( ${#files[@]} == 0 )); then
+            echo "::error::No .mrpack or .zip packs found."
+            exit 1
+          fi
+
+          # Every version listed in metadata.json must ship both pack formats.
+          missing=0
+          while IFS= read -r mc; do
+            for ext in mrpack zip; do
+              if [[ ! -f "$mc/sfs-$mc.$ext" ]]; then
+                echo "::error::Missing $mc/sfs-$mc.$ext"
+                missing=1
+              fi
+            done
+          done < <(jq -r '.versions[]' scripts/metadata.json)
+          (( missing == 0 )) || exit 1
+
+          {
+            echo "files<<EOF"
+            printf '%s\n' "${files[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Collected ${#files[@]} files:"
+          printf '  %s\n' "${files[@]}"
+
+      - name: Write release notes
+        env:
+          VERSION: ${{ steps.packs.outputs.version }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "Standard Fabric Server **v${VERSION}**"
+            echo
+            echo "Each Minecraft version ships as a Modrinth pack (\`.mrpack\`)"
+            echo "and a ready-to-run server zip (\`.zip\`)."
+            echo
+            echo "| Minecraft | Downloads |"
+            echo "| --- | --- |"
+            while IFS= read -r mc; do
+              echo "| \`$mc\` | [\`.mrpack\`](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/sfs-${mc}.mrpack) · [\`.zip\`](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/sfs-${mc}.zip) |"
+            done < <(jq -r '.versions[]' scripts/metadata.json)
+          } > "$RUNNER_TEMP/release-notes.md"
+
+          cat "$RUNNER_TEMP/release-notes.md"
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          VERSION: ${{ steps.packs.outputs.version }}
+          FILES: ${{ steps.packs.outputs.files }}
+          EVENT_NAME: ${{ github.event_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          title="Standard Fabric Server v${VERSION}"
+          mapfile -t files <<< "$FILES"
+
+          if [[ "$TAG" != "v$VERSION" ]]; then
+            echo "::warning::Tag $TAG does not match scripts/metadata.json version (v$VERSION)."
+          fi
+
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG already exists; updating notes and assets."
+            gh release edit "$TAG" \
+              --title "$title" \
+              --notes-file "$RUNNER_TEMP/release-notes.md"
+            gh release upload "$TAG" "${files[@]}" --clobber
+          else
+            gh release create "$TAG" "${files[@]}" \
+              --title "$title" \
+              --notes-file "$RUNNER_TEMP/release-notes.md" \
+              --latest
+          fi
+
+          echo "Released $TAG with ${#files[@]} assets."
