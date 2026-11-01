@@ -138,8 +138,7 @@ jobs:
           {
             echo "Standard Fabric Server **v${VERSION}**"
             echo
-            echo "Each Minecraft version ships as a Modrinth pack (\`.mrpack\`)"
-            echo "and a ready-to-run server zip (\`.zip\`)."
+            echo "Each Minecraft version ships as a Modrinth pack (\`.mrpack\`) and a zip (\`.zip\`) file with the mods folder."
             echo
             echo "| Minecraft | Downloads |"
             echo "| --- | --- |"
