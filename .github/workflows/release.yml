@@ -143,7 +143,7 @@ jobs:
             echo "| Minecraft | Downloads |"
             echo "| --- | --- |"
             while IFS= read -r mc; do
-              echo "| \`$mc\` | [\`.mrpack\`](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/sfs-${mc}.mrpack) · [\`.zip\`](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/sfs-${mc}.zip) |"
+              echo "| \`$mc\` | [\`.mrpack\`](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/sfs-${mc}.mrpack) - [\`.zip\`](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/sfs-${mc}.zip) |"
             done < <(jq -r '.versions[]' scripts/metadata.json)
           } > "$RUNNER_TEMP/release-notes.md"
 
@@ -176,3 +176,20 @@ jobs:
           fi
 
           echo "Released $TAG with ${#files[@]} assets."
+
+      - name: Publish to Modrinth
+        working-directory: scripts/uploader
+        shell: bash
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_PAT }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$MODRINTH_TOKEN" ]]; then
+            echo "::error::MODRINTH_TOKEN secret is not configured."
+            exit 1
+          fi
+
+          npm install --no-audit --no-fund
+          node index.js --changelog "See the [commits on GitHub](https://github.com/${REPOSITORY}/commits/main) for the changelog. The ZIP file downloads are available in the [GitHub release](https://github.com/${REPOSITORY}/releases/tag/${TAG})"
